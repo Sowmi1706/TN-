@@ -1,0 +1,6 @@
+{
+  "name": "TN Stories - AI-Powered Tamil Nadu Tourism Application",
+  "description": "Discover Tamil Nadu's rich cultural heritage, majestic temples, hidden spots, hill stations, authentic local food, AI trip planner, transport guides, and curated stories.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
