@@ -15,12 +15,14 @@ import { DESTINATIONS } from '../data/mockData';
 import { useLanguage } from '../context/LanguageContext';
 
 interface InteractiveMapProps {
+  destinations?: Destination[];
   onSelectDestination: (destination: Destination) => void;
   userCoords: { lat: number; lng: number } | null;
   onRequestUserLocation: () => void;
 }
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
+  destinations = DESTINATIONS,
   onSelectDestination,
   userCoords,
   onRequestUserLocation
@@ -99,10 +101,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
   const renderMarkers = (L: any, markersGroup: any, category: string) => {
     const filtered = category === 'all'
-      ? DESTINATIONS
+      ? destinations
       : category === 'hidden'
-      ? DESTINATIONS.filter(d => d.isHiddenSpot)
-      : DESTINATIONS.filter(d => d.category === category);
+      ? destinations.filter(d => d.isHiddenSpot)
+      : destinations.filter(d => d.category === category);
 
     filtered.forEach((dest) => {
       const pinColor = dest.isHiddenSpot 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Hotel as HotelIcon, 
   Star, 
@@ -22,15 +22,25 @@ export const HotelSection: React.FC = () => {
 
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('all');
+  const [hotels, setHotels] = useState<Hotel[]>(HOTELS);
   const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
   const [checkInDate, setCheckInDate] = useState('2026-11-12');
   const [nights, setNights] = useState(2);
   const [guests, setGuests] = useState(2);
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
+  useEffect(() => {
+    fetch('/api/hotels')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) setHotels(data);
+      })
+      .catch(() => {});
+  }, []);
+
   const districts = ['all', 'Sivaganga', 'Madurai', 'Thanjavur', 'Nilgiris', 'Ramanathapuram', 'Dindigul'];
 
-  const filteredHotels = HOTELS.filter(hotel => {
+  const filteredHotels = hotels.filter(hotel => {
     const matchCat = filterCategory === 'all' || hotel.category === filterCategory;
     const matchDist = selectedDistrict === 'all' || hotel.district.toLowerCase() === selectedDistrict.toLowerCase();
     return matchCat && matchDist;

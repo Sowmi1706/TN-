@@ -1,13 +1,37 @@
-import React, { useState } from 'react';
-import { Calendar, MapPin, Ticket, Sparkles, Clock, Users } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, MapPin, Ticket, Sparkles, Clock, Users, RefreshCw } from 'lucide-react';
 import { EVENTS } from '../data/mockData';
+import { EventFestival } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 
 export const EventsSection: React.FC = () => {
   const { language, t } = useLanguage();
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [events, setEvents] = useState<EventFestival[]>(EVENTS);
+  const [loading, setLoading] = useState(false);
 
-  const filteredEvents = EVENTS.filter(ev => {
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/events');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setEvents(data);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed loading events from server, using cached store:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const filteredEvents = events.filter(ev => {
     if (filterCategory === 'all') return true;
     return ev.category === filterCategory;
   });

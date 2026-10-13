@@ -4,7 +4,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'user' | 'admin';
+  role: 'customer' | 'admin' | 'user';
   preferredLanguage: Language;
   avatar?: string;
   travelCompanion?: 'family' | 'friends' | 'solo' | 'group' | 'couple';
@@ -17,6 +17,9 @@ export interface User {
 
 export interface Booking {
   id: string;
+  customerId?: string;
+  customerName?: string;
+  customerEmail?: string;
   type: 'hotel' | 'vehicle' | 'package';
   referenceId: string;
   title: string;
@@ -26,7 +29,9 @@ export interface Booking {
   status: 'confirmed' | 'pending' | 'cancelled';
   contactPhone: string;
   notes?: string;
+  adminNotes?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export type DestinationCategory =

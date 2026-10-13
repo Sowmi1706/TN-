@@ -35,6 +35,9 @@ import { EmergencySection } from './components/EmergencySection';
 import { EventsSection } from './components/EventsSection';
 import { OffersPackagesSection } from './components/OffersPackagesSection';
 import { AdminDashboard } from './components/AdminDashboard';
+import { AdminLoginPage } from './components/AdminLoginPage';
+import { CustomerLoginPage } from './components/CustomerLoginPage';
+import { CustomerDashboard } from './components/CustomerDashboard';
 import { AuthModal } from './components/AuthModal';
 import { UserProfile } from './components/UserProfile';
 import { DESTINATIONS, STORIES, SPECIAL_OFFERS, TOUR_PACKAGES } from './data/mockData';
@@ -42,7 +45,7 @@ import { Destination, Story } from './types';
 
 function MainApp() {
   const { language, t } = useLanguage();
-  const { user, openAuthModal } = useAuth();
+  const { user, openAuthModal, isAdmin } = useAuth();
 
   const [activeTab, setActiveTab] = useState<string>('home');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -50,6 +53,50 @@ function MainApp() {
   const [selectedDistrict, setSelectedDistrict] = useState<string>('all');
   const [budgetFilter, setBudgetFilter] = useState<string>('all');
   const [onlyHiddenGems, setOnlyHiddenGems] = useState<boolean>(false);
+
+  // Live database destinations state (connected to backend persistent database)
+  const [destinations, setDestinations] = useState<Destination[]>(DESTINATIONS);
+  const [dbVersion, setDbVersion] = useState<number>(1);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
+  // Fetch live destinations from backend database
+  const fetchDestinations = async () => {
+    try {
+      setIsSyncing(true);
+      const res = await fetch('/api/destinations');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setDestinations(data);
+        }
+      }
+    } catch (e) {
+      console.warn('Backend sync offline fallback:', e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDestinations();
+  }, []);
+
+  // Real-time updates: poll DB version periodically to update customer app when admin publishes changes
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/db/version');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.version && data.version !== dbVersion) {
+            setDbVersion(data.version);
+            fetchDestinations();
+          }
+        }
+      } catch {}
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [dbVersion]);
 
   // Modals state
   const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
@@ -101,8 +148,8 @@ function MainApp() {
     { id: 'heritage', label: t('categoryHeritage') }
   ];
 
-  // Filter logic
-  const filteredDestinations = DESTINATIONS.filter((dest) => {
+  // Filter logic (connected to live persistent destinations)
+  const filteredDestinations = destinations.filter((dest) => {
     // 1. Search Query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -255,7 +302,7 @@ function MainApp() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {DESTINATIONS.filter(d => d.isHiddenSpot).slice(0, 4).map(dest => (
+                {destinations.filter(d => d.isHiddenSpot).slice(0, 4).map(dest => (
                   <DestinationCard
                     key={dest.id}
                     destination={dest}
@@ -333,7 +380,7 @@ function MainApp() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {DESTINATIONS.filter(d => d.isPopular).slice(0, 4).map(dest => (
+                {destinations.filter(d => d.isPopular).slice(0, 4).map(dest => (
                   <DestinationCard
                     key={dest.id}
                     destination={dest}
@@ -599,6 +646,7 @@ function MainApp() {
               </p>
             </div>
             <InteractiveMap
+              destinations={destinations}
               onSelectDestination={(d) => setSelectedDestination(d)}
               userCoords={userCoords}
               onRequestUserLocation={requestUserLocation}
@@ -624,16 +672,76 @@ function MainApp() {
         {/* TAB: OFFERS & PACKAGES */}
         {activeTab === 'packages' && <OffersPackagesSection />}
 
-        {/* TAB: USER PROFILE */}
-        {activeTab === 'profile' && (
-          <UserProfile
-            onSelectDestination={(d) => setSelectedDestination(d)}
-            onOpenStory={(id) => handleOpenStoryByDestinationId(id)}
+        {/* TAB: SEPARATE ADMIN LOGIN PAGE */}
+        {activeTab === 'admin_login' && (
+          <AdminLoginPage
+            onSuccess={() => {
+              setActiveTab('admin');
+              fetchDestinations();
+            }}
+            onBackToApp={() => setActiveTab('home')}
+            onGoToCustomerLogin={() => setActiveTab('customer_login')}
           />
         )}
 
-        {/* TAB: ADMIN DASHBOARD */}
-        {activeTab === 'admin' && <AdminDashboard />}
+        {/* TAB: SEPARATE CUSTOMER LOGIN & REGISTRATION PAGE */}
+        {activeTab === 'customer_login' && (
+          <CustomerLoginPage
+            onSuccess={() => {
+              setActiveTab('customer_dashboard');
+              fetchDestinations();
+            }}
+            onBackToApp={() => setActiveTab('home')}
+            onGoToAdminLogin={() => setActiveTab('admin_login')}
+          />
+        )}
+
+        {/* TAB: CUSTOMER DASHBOARD */}
+        {(activeTab === 'customer_dashboard' || (activeTab === 'profile' && user?.role !== 'admin')) && (
+          <CustomerDashboard
+            destinations={destinations}
+            onSelectDestination={(d) => setSelectedDestination(d)}
+            onOpenStory={(id) => handleOpenStoryByDestinationId(id)}
+            onNavigateTab={(tabId) => setActiveTab(tabId)}
+            onLogoutSuccess={() => setActiveTab('home')}
+          />
+        )}
+
+        {/* TAB: ADMIN DASHBOARD (STRICT ROLE-BASED ACCESS CONTROL) */}
+        {activeTab === 'admin' && (
+          isAdmin ? (
+            <AdminDashboard
+              onDataChanged={() => fetchDestinations()}
+              onLogoutSuccess={() => setActiveTab('home')}
+            />
+          ) : (
+            <div className="max-w-md mx-auto my-16 p-8 bg-white border border-stone-200 rounded-2xl text-center space-y-4 shadow-xl">
+              <div className="w-14 h-14 rounded-2xl bg-rose-100 border border-rose-200 flex items-center justify-center mx-auto text-rose-700">
+                <ShieldAlert className="w-8 h-8" />
+              </div>
+              <h2 className="font-display text-xl font-bold text-stone-900">
+                Access Restricted
+              </h2>
+              <p className="text-xs text-stone-600 leading-relaxed">
+                The Administrator Portal requires an authorized administrator account. Customers and travelers cannot access administrative functions or moderation APIs.
+              </p>
+              <div className="pt-2 flex flex-col gap-2">
+                <button
+                  onClick={() => setActiveTab('admin_login')}
+                  className="w-full py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-amber-300 font-bold text-xs uppercase tracking-wider cursor-pointer"
+                >
+                  Go to Admin Login Portal
+                </button>
+                <button
+                  onClick={() => setActiveTab('home')}
+                  className="w-full py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-xs cursor-pointer"
+                >
+                  Return to TN Stories
+                </button>
+              </div>
+            </div>
+          )
+        )}
 
       </main>
 

@@ -200,38 +200,64 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Profile / Auth Button */}
+            {/* Profile / Separate Auth Buttons */}
             {isAuthenticated ? (
-              <button
-                onClick={() => handleNavClick('profile')}
-                className={`flex items-center gap-2 pl-2 pr-3 py-1 rounded-md transition-all cursor-pointer border ${
-                  activeTab === 'profile'
-                    ? 'bg-amber-600/30 border-amber-500 text-amber-200'
-                    : 'bg-stone-800/80 border-stone-700 text-stone-200 hover:border-amber-600/50'
-                }`}
-              >
-                <img
-                  src={user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80'}
-                  alt={user?.name}
-                  className="w-6 h-6 rounded-full object-cover border border-amber-500/40"
-                />
-                <span className="text-xs font-medium max-w-[80px] sm:max-w-[120px] truncate">
-                  {user?.name.split(' ')[0]}
-                </span>
-                {user?.wishlist && user.wishlist.length > 0 && (
-                  <span className="flex items-center gap-0.5 text-[10px] text-amber-300">
-                    <Heart className="w-3 h-3 fill-amber-400 text-amber-400" />
-                    <span>{user.wishlist.length}</span>
-                  </span>
+              <div className="flex items-center gap-2">
+                {isAdmin ? (
+                  <button
+                    onClick={() => handleNavClick('admin')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-all ${
+                      activeTab === 'admin'
+                        ? 'bg-amber-500 text-stone-950 border-amber-400 font-bold'
+                        : 'bg-amber-950/80 text-amber-300 border-amber-700/60 hover:bg-amber-900'
+                    }`}
+                  >
+                    <ShieldCheck className="w-4 h-4 text-amber-400" />
+                    <span>Admin Dashboard</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleNavClick('profile')}
+                    className={`flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-lg transition-all cursor-pointer border ${
+                      activeTab === 'profile'
+                        ? 'bg-amber-600/30 border-amber-500 text-amber-200'
+                        : 'bg-stone-800/80 border-stone-700 text-stone-200 hover:border-amber-600/50'
+                    }`}
+                  >
+                    <img
+                      src={user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80'}
+                      alt={user?.name}
+                      className="w-5 h-5 rounded-full object-cover border border-amber-500/40"
+                    />
+                    <span className="text-xs font-medium max-w-[90px] sm:max-w-[120px] truncate">
+                      {user?.name.split(' ')[0]}
+                    </span>
+                    {user?.wishlist && user.wishlist.length > 0 && (
+                      <span className="flex items-center gap-0.5 text-[10px] text-amber-300">
+                        <Heart className="w-3 h-3 fill-amber-400 text-amber-400" />
+                        <span>{user.wishlist.length}</span>
+                      </span>
+                    )}
+                  </button>
                 )}
-              </button>
+              </div>
             ) : (
-              <button
-                onClick={onOpenAuth}
-                className="px-3.5 py-1.5 rounded-md bg-amber-600 hover:bg-amber-500 text-stone-950 font-semibold text-xs transition-colors cursor-pointer shadow-sm"
-              >
-                {t('login')}
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => handleNavClick('customer_login')}
+                  className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs transition-colors cursor-pointer shadow-sm"
+                >
+                  Customer Login
+                </button>
+                <button
+                  onClick={() => handleNavClick('admin_login')}
+                  className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-stone-800/90 hover:bg-stone-800 border border-stone-700 text-stone-300 hover:text-amber-300 text-xs font-medium transition-colors cursor-pointer"
+                  title="Official Administrator Portal"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Admin</span>
+                </button>
+              </div>
             )}
 
             {/* Mobile Hamburger Menu */}
@@ -294,15 +320,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {!isAuthenticated && (
-            <div className="pt-2">
+            <div className="pt-2 grid grid-cols-2 gap-2">
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  onOpenAuth();
+                  handleNavClick('customer_login');
                 }}
-                className="w-full py-2.5 rounded-lg bg-amber-600 text-stone-950 font-bold text-xs uppercase tracking-wide text-center"
+                className="py-2.5 px-2 rounded-lg bg-amber-600 text-stone-950 font-bold text-xs uppercase tracking-wide text-center cursor-pointer shadow-sm"
               >
-                {t('login')} / {t('signup')}
+                Customer Sign In
+              </button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleNavClick('admin_login');
+                }}
+                className="py-2.5 px-2 rounded-lg bg-stone-800 text-amber-300 border border-stone-700 font-bold text-xs uppercase tracking-wide text-center cursor-pointer flex items-center justify-center gap-1"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Admin Portal</span>
               </button>
             </div>
           )}

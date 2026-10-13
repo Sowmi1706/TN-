@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Tag, 
   Check, 
@@ -19,11 +19,21 @@ export const OffersPackagesSection: React.FC = () => {
   const { user, addBooking } = useAuth();
 
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [packages, setPackages] = useState<TourPackage[]>(TOUR_PACKAGES);
   const [selectedPackage, setSelectedPackage] = useState<TourPackage | null>(null);
   const [travelers, setTravelers] = useState(2);
   const [selectedDate, setSelectedDate] = useState('2026-11-20');
   const [contactPhone, setContactPhone] = useState('+91 98401 23456');
   const [bookingSuccess, setBookingSuccess] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/packages')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) setPackages(data);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleCopyCode = (code: string) => {
     if (navigator.clipboard) {
@@ -119,7 +129,7 @@ export const OffersPackagesSection: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {TOUR_PACKAGES.map((pkg) => (
+          {packages.map((pkg) => (
             <div key={pkg.id} className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm flex flex-col justify-between">
               <div>
                 <div className="aspect-[16/10] relative bg-stone-900 overflow-hidden">

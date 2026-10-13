@@ -9,9 +9,10 @@ import {
   ArrowRight, 
   ShieldCheck, 
   Compass, 
-  Globe 
+  Globe,
+  Loader2 
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, AuthModalTab } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Language } from '../types';
 
@@ -20,8 +21,9 @@ export const AuthModal: React.FC = () => {
     showAuthModal, 
     authModalTab, 
     closeAuthModal, 
-    login, 
-    register, 
+    loginCustomer,
+    loginAdmin,
+    registerCustomer, 
     resetPasswordRequest,
     openAuthModal,
     updateProfile,
@@ -48,19 +50,25 @@ export const AuthModal: React.FC = () => {
     setError(null);
     setLoading(true);
 
-    if (authModalTab === 'login') {
-      const res = await login(email, password);
+    if (authModalTab === 'admin_login') {
+      const res = await loginAdmin(email, password);
       if (!res.success) {
-        setError(res.error || 'Invalid credentials');
+        setError(res.error || 'Invalid administrator credentials');
       }
-    } else if (authModalTab === 'register') {
-      const res = await register(name, email, password);
+    } else if (authModalTab === 'customer_register' || authModalTab === 'register') {
+      const res = await registerCustomer(name, email, password);
       if (!res.success) {
-        setError(res.error || 'Failed to register account');
+        setError(res.error || 'Failed to create customer account');
       }
     } else if (authModalTab === 'forgot') {
       const res = await resetPasswordRequest(email);
       setSuccessMsg(res.message);
+    } else {
+      // customer_login or default
+      const res = await loginCustomer(email, password);
+      if (!res.success) {
+        setError(res.error || 'Invalid customer credentials');
+      }
     }
     setLoading(false);
   };
@@ -73,14 +81,6 @@ export const AuthModal: React.FC = () => {
       interests: prefInterests
     });
     closeAuthModal();
-  };
-
-  const handleQuickLogin = (role: 'explorer' | 'admin') => {
-    if (role === 'admin') {
-      login('admin@tnstories.com', 'admin123');
-    } else {
-      login('explorer@tnstories.com', 'explorer123');
-    }
   };
 
   return (
@@ -99,20 +99,56 @@ export const AuthModal: React.FC = () => {
         {/* Modal Header Branding */}
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-600 to-amber-800 text-amber-100 font-display font-bold text-2xl flex items-center justify-center mx-auto shadow-md border border-amber-400/40">
-            TN
+            {authModalTab === 'admin_login' ? <ShieldCheck className="w-6 h-6" /> : 'TN'}
           </div>
           <h2 className="font-display text-2xl font-bold text-stone-900">
-            {authModalTab === 'login' ? 'Vanakkam! Welcome Back' : 
-             authModalTab === 'register' ? 'Join TN Stories Explorer Club' : 
-             authModalTab === 'preferences' ? 'Set Your Travel Preferences' :
-             'Reset Your Password'}
+            {authModalTab === 'admin_login' ? 'Administrator Login' : 
+             authModalTab === 'customer_register' || authModalTab === 'register' ? 'Customer Registration' : 
+             authModalTab === 'preferences' ? 'Set Travel Preferences' :
+             authModalTab === 'forgot' ? 'Reset Password' :
+             'Customer Sign In'}
           </h2>
           <p className="text-xs text-stone-500">
-            {authModalTab === 'preferences' 
-              ? 'Tell us your preferred language and travel style to curate personalized stories.' 
-              : 'Discover living heritage, sacred temples, and hidden spots across Tamil Nadu.'}
+            {authModalTab === 'admin_login' 
+              ? 'Authorized Tamil Nadu Tourism administrators portal.' 
+              : authModalTab === 'preferences' 
+              ? 'Tell us your preferred language and style.' 
+              : 'Save favourite temples, book stays, and plan your trips.'}
           </p>
         </div>
+
+        {/* Role Segmenter Tab Switcher */}
+        {authModalTab !== 'preferences' && (
+          <div className="grid grid-cols-2 p-1 bg-stone-100 rounded-xl text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => {
+                openAuthModal('customer_login');
+                setError(null);
+              }}
+              className={`py-2 rounded-lg transition-colors cursor-pointer ${
+                authModalTab !== 'admin_login' ? 'bg-white text-stone-950 shadow-sm font-bold' : 'text-stone-600'
+              }`}
+            >
+              Customer Portal
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                openAuthModal('admin_login');
+                setError(null);
+                setEmail('admin@tnstories.com');
+                setPassword('admin123');
+              }}
+              className={`py-2 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1 ${
+                authModalTab === 'admin_login' ? 'bg-stone-900 text-amber-300 shadow-sm font-bold' : 'text-stone-600'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Admin Portal</span>
+            </button>
+          </div>
+        )}
 
         {/* Error or Success notification */}
         {error && (
@@ -126,11 +162,9 @@ export const AuthModal: React.FC = () => {
           </div>
         )}
 
-        {/* TAB: PREFERENCES SETUP POST-SIGNUP */}
+        {/* TAB: PREFERENCES */}
         {authModalTab === 'preferences' ? (
           <div className="space-y-4 text-xs">
-            
-            {/* Preferred Language */}
             <div className="space-y-1.5">
               <label className="font-semibold text-stone-700 flex items-center gap-1.5">
                 <Globe className="w-4 h-4 text-amber-700" />
@@ -139,14 +173,14 @@ export const AuthModal: React.FC = () => {
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { id: 'en', label: 'English' },
-                  { id: 'ta', label: 'தமிழ் (Tamil)' },
-                  { id: 'hi', label: 'हिन्दी (Hindi)' }
+                  { id: 'ta', label: 'தமிழ்' },
+                  { id: 'hi', label: 'हिन्दी' }
                 ].map(l => (
                   <button
                     key={l.id}
                     type="button"
                     onClick={() => setPrefLang(l.id as any)}
-                    className={`py-2 px-2 text-center rounded-lg border font-medium transition-colors cursor-pointer ${
+                    className={`py-2 px-2 text-center rounded-lg border font-medium cursor-pointer ${
                       prefLang === l.id
                         ? 'bg-amber-600 text-stone-950 border-amber-600 font-bold'
                         : 'bg-stone-50 border-stone-200 text-stone-700'
@@ -158,11 +192,10 @@ export const AuthModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Travel Companion */}
             <div className="space-y-1.5">
               <label className="font-semibold text-stone-700 flex items-center gap-1.5">
                 <Compass className="w-4 h-4 text-amber-700" />
-                Default Travel Companion Style
+                Default Travel Style
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {['family', 'friends', 'solo', 'couple', 'group'].map(comp => (
@@ -170,7 +203,7 @@ export const AuthModal: React.FC = () => {
                     key={comp}
                     type="button"
                     onClick={() => setPrefCompanion(comp as any)}
-                    className={`py-1.5 px-2 text-center rounded-lg border capitalize transition-colors cursor-pointer ${
+                    className={`py-1.5 px-2 text-center rounded-lg border capitalize cursor-pointer ${
                       prefCompanion === comp
                         ? 'bg-amber-50 border-amber-600 text-amber-950 font-bold'
                         : 'bg-stone-50 border-stone-200 text-stone-700'
@@ -190,10 +223,10 @@ export const AuthModal: React.FC = () => {
             </button>
           </div>
         ) : (
-          /* TAB: LOGIN / REGISTER / FORGOT */
+          /* FORM */
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             
-            {authModalTab === 'register' && (
+            {(authModalTab === 'customer_register' || authModalTab === 'register') && (
               <div className="space-y-1">
                 <label className="font-semibold text-stone-700 block">Full Name</label>
                 <div className="relative">
@@ -211,14 +244,16 @@ export const AuthModal: React.FC = () => {
             )}
 
             <div className="space-y-1">
-              <label className="font-semibold text-stone-700 block">Email Address</label>
+              <label className="font-semibold text-stone-700 block">
+                {authModalTab === 'admin_login' ? 'Administrator Email' : 'Customer Email'}
+              </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your.email@example.com"
+                  placeholder={authModalTab === 'admin_login' ? 'admin@tnstories.com' : 'customer@example.com'}
                   className="w-full bg-stone-50 border border-stone-300 rounded-lg pl-9 pr-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-amber-600"
                   required
                 />
@@ -229,13 +264,13 @@ export const AuthModal: React.FC = () => {
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <label className="font-semibold text-stone-700">Password</label>
-                  {authModalTab === 'login' && (
+                  {authModalTab !== 'admin_login' && (
                     <button
                       type="button"
                       onClick={() => openAuthModal('forgot')}
                       className="text-[11px] text-amber-800 hover:underline"
                     >
-                      Forgot Password?
+                      Forgot?
                     </button>
                   )}
                 </div>
@@ -256,61 +291,71 @@ export const AuthModal: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold uppercase tracking-wider text-xs transition-colors cursor-pointer shadow-sm"
+              className={`w-full py-2.5 rounded-lg font-bold uppercase tracking-wider text-xs transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-2 ${
+                authModalTab === 'admin_login'
+                  ? 'bg-stone-900 hover:bg-stone-800 text-amber-300'
+                  : 'bg-amber-600 hover:bg-amber-500 text-stone-950'
+              }`}
             >
-              {loading ? 'Processing...' : 
-               authModalTab === 'login' ? 'Sign In to Account' : 
-               authModalTab === 'register' ? 'Create Free Explorer Account' : 
-               'Send Password Reset Instructions'}
+              {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              <span>
+                {authModalTab === 'admin_login' ? 'Sign In as Admin' : 
+                 authModalTab === 'customer_register' || authModalTab === 'register' ? 'Register Customer' : 
+                 authModalTab === 'forgot' ? 'Send Password Reset' :
+                 'Sign In as Customer'}
+              </span>
             </button>
 
-            {/* Quick Demo Logins for Testing */}
-            <div className="pt-2 border-t border-stone-100">
-              <span className="text-[11px] text-stone-400 block text-center mb-2">1-Click Quick Demo Access</span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('explorer')}
-                  className="py-1.5 px-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-md text-[11px] font-semibold text-center transition-colors cursor-pointer"
-                >
-                  👤 Explorer User
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('admin')}
-                  className="py-1.5 px-2 bg-amber-950/10 hover:bg-amber-950/20 text-amber-900 rounded-md text-[11px] font-semibold text-center transition-colors cursor-pointer"
-                >
-                  🛡️ Tourism Admin
-                </button>
-              </div>
+            {/* Quick Demo Fill Helper */}
+            <div className="p-2.5 bg-stone-50 rounded-lg border border-stone-200 text-[11px] flex items-center justify-between">
+              <span className="text-stone-500">
+                {authModalTab === 'admin_login' ? 'Admin: admin@tnstories.com' : 'Demo: customer@tnstories.com'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (authModalTab === 'admin_login') {
+                    setEmail('admin@tnstories.com');
+                    setPassword('admin123');
+                  } else {
+                    setEmail('customer@tnstories.com');
+                    setPassword('customer123');
+                  }
+                }}
+                className="text-amber-800 font-bold hover:underline"
+              >
+                Auto-fill
+              </button>
             </div>
 
-            {/* Switch between Login and Register */}
-            <div className="text-center text-xs text-stone-500 pt-1">
-              {authModalTab === 'login' ? (
-                <p>
-                  Don't have an account yet?{' '}
-                  <button
-                    type="button"
-                    onClick={() => openAuthModal('register')}
-                    className="text-amber-800 font-bold hover:underline"
-                  >
-                    Sign up now
-                  </button>
-                </p>
-              ) : (
-                <p>
-                  Already have an account?{' '}
-                  <button
-                    type="button"
-                    onClick={() => openAuthModal('login')}
-                    className="text-amber-800 font-bold hover:underline"
-                  >
-                    Log in
-                  </button>
-                </p>
-              )}
-            </div>
+            {/* Switch between Customer Login & Customer Register */}
+            {authModalTab !== 'admin_login' && authModalTab !== 'forgot' && (
+              <div className="text-center text-xs text-stone-500 pt-1">
+                {authModalTab === 'customer_register' || authModalTab === 'register' ? (
+                  <p>
+                    Already have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => openAuthModal('customer_login')}
+                      className="text-amber-800 font-bold hover:underline"
+                    >
+                      Sign In
+                    </button>
+                  </p>
+                ) : (
+                  <p>
+                    New explorer?{' '}
+                    <button
+                      type="button"
+                      onClick={() => openAuthModal('customer_register')}
+                      className="text-amber-800 font-bold hover:underline"
+                    >
+                      Create customer account
+                    </button>
+                  </p>
+                )}
+              </div>
+            )}
 
           </form>
         )}
